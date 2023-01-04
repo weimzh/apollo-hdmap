@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/common/configs/config_gflags.h"
+#include "config_gflags.h"
 
 DEFINE_string(map_dir, "/apollo/modules/map/data/sunnyvale_loop",
               "Directory which contains a group of related maps.");
