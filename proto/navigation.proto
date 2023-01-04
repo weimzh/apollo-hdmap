@@ -1,0 +1,355 @@
+syntax = "proto2";
+
+package apollo.relative_map;
+
+import "header.proto";
+import "map.proto";
+import "map_lane.proto";
+import "geometry.proto";
+
+message PathPoint {
+  // coordinates
+  optional double x = 1;
+  optional double y = 2;
+  optional double z = 3;
+
+  // direction on the x-y plane
+  optional double theta = 4;
+  // curvature on the x-y planning
+  optional double kappa = 5;
+  // accumulated distance from beginning of the path
+  optional double s = 6;
+
+  // derivative of kappa w.r.t s.
+  optional double dkappa = 7;
+  // derivative of derivative of kappa w.r.t s.
+  optional double ddkappa = 8;
+  // The lane ID where the path point is on
+  optional string lane_id = 9;
+
+  // derivative of x and y w.r.t parametric parameter t in CosThetareferenceline
+  optional double x_derivative = 10;
+  optional double y_derivative = 11;
+}
+
+message Path {
+  optional string name = 1;
+  repeated PathPoint path_point = 2;
+}
+
+message NavigationPath {
+  optional Path path = 1;
+  // highest = 0 which can directly reach destination; change lane indicator
+  optional uint32 path_priority = 2;
+}
+
+message LaneMarker {
+  optional apollo.hdmap.LaneBoundaryType.Type lane_type = 1;
+  optional double quality = 2;  // range = [0,1]; 1 = the best quality
+  optional int32 model_degree = 3;
+
+  // equation X = c3 * Z^3 + c2 * Z^2 + c1 * Z + c0
+  optional double c0_position = 4;
+  optional double c1_heading_angle = 5;
+  optional double c2_curvature = 6;
+  optional double c3_curvature_derivative = 7;
+  optional double view_range = 8;
+  optional double longitude_start = 9;
+  optional double longitude_end = 10;
+}
+
+message LaneMarkers {
+  optional LaneMarker left_lane_marker = 1;
+  optional LaneMarker right_lane_marker = 2;
+  repeated LaneMarker next_left_lane_marker = 3;
+  repeated LaneMarker next_right_lane_marker = 4;
+}
+
+message Pose {
+  // Position of the vehicle reference point (VRP) in the map reference frame.
+  // The VRP is the center of rear axle.
+  optional apollo.common.PointENU position = 1;
+
+  // A quaternion that represents the rotation from the IMU coordinate
+  // (Right/Forward/Up) to the
+  // world coordinate (East/North/Up).
+  optional apollo.common.Quaternion orientation = 2;
+
+  // Linear velocity of the VRP in the map reference frame.
+  // East/north/up in meters per second.
+  optional apollo.common.Point3D linear_velocity = 3;
+
+  // Linear acceleration of the VRP in the map reference frame.
+  // East/north/up in meters per square second.
+  optional apollo.common.Point3D linear_acceleration = 4;
+
+  // Angular velocity of the vehicle in the map reference frame.
+  // Around east/north/up axes in radians per second.
+  optional apollo.common.Point3D angular_velocity = 5;
+
+  // Heading
+  // The heading is zero when the car is facing East and positive when facing
+  // North.
+  optional double heading = 6;
+
+  // Linear acceleration of the VRP in the vehicle reference frame.
+  // Right/forward/up in meters per square second.
+  optional apollo.common.Point3D linear_acceleration_vrf = 7;
+
+  // Angular velocity of the VRP in the vehicle reference frame.
+  // Around right/forward/up axes in radians per second.
+  optional apollo.common.Point3D angular_velocity_vrf = 8;
+
+  // Roll/pitch/yaw that represents a rotation with intrinsic sequence z-x-y.
+  // in world coordinate (East/North/Up)
+  // The roll, in (-pi/2, pi/2), corresponds to a rotation around the y-axis.
+  // The pitch, in [-pi, pi), corresponds to a rotation around the x-axis.
+  // The yaw, in [-pi, pi), corresponds to a rotation around the z-axis.
+  // The direction of rotation follows the right-hand rule.
+  optional apollo.common.Point3D euler_angles = 9;
+}
+
+message Uncertainty {
+  // Standard deviation of position, east/north/up in meters.
+  optional apollo.common.Point3D position_std_dev = 1;
+
+  // Standard deviation of quaternion qx/qy/qz, unitless.
+  optional apollo.common.Point3D orientation_std_dev = 2;
+
+  // Standard deviation of linear velocity, east/north/up in meters per second.
+  optional apollo.common.Point3D linear_velocity_std_dev = 3;
+
+  // Standard deviation of linear acceleration, right/forward/up in meters per
+  // square second.
+  optional apollo.common.Point3D linear_acceleration_std_dev = 4;
+
+  // Standard deviation of angular velocity, right/forward/up in radians per
+  // second.
+  optional apollo.common.Point3D angular_velocity_std_dev = 5;
+
+  // TODO: Define covariance items when needed.
+}
+
+message GaussianInfo {
+  // Information of gaussian distribution
+  optional double sigma_x = 1;
+  optional double sigma_y = 2;
+  optional double correlation = 3;
+  // Information of representative uncertainty area
+  optional double area_probability = 4;
+  optional double ellipse_a = 5;
+  optional double ellipse_b = 6;
+  optional double theta_a = 7;
+}
+
+message TrajectoryPoint {
+  // path point
+  optional PathPoint path_point = 1;
+  // linear velocity
+  optional double v = 2;  // in [m/s]
+  // linear acceleration
+  optional double a = 3;
+  // relative time from beginning of the trajectory
+  optional double relative_time = 4;
+  // longitudinal jerk
+  optional double da = 5;
+  // The angle between vehicle front wheel and vehicle longitudinal axis
+  optional double steer = 6;
+
+  // Gaussian probability information
+  optional GaussianInfo gaussian_info = 7;
+}
+
+// LiDAR-based loclaization module status
+enum LocalLidarStatus {
+  MSF_LOCAL_LIDAR_NORMAL = 0;       // Localization result satisfy threshold
+  MSF_LOCAL_LIDAR_MAP_MISSING = 1;  // Can't find localization map (config.xml)
+  MSF_LOCAL_LIDAR_EXTRINSICS_MISSING = 2;  // Missing extrinsic parameters
+  MSF_LOCAL_LIDAR_MAP_LOADING_FAILED = 3;  // Fail to load localization map
+  MSF_LOCAL_LIDAR_NO_OUTPUT =
+      4;  // No output (comparing to timestamp of imu msg)
+  MSF_LOCAL_LIDAR_OUT_OF_MAP =
+      5;  // Coverage of online pointcloud and map is lower than threshold
+  MSF_LOCAL_LIDAR_NOT_GOOD = 6;  // Localization result do not meet threshold
+  MSF_LOCAL_LIDAR_UNDEFINED_STATUS = 7;  // others
+}
+
+enum LocalLidarQuality {
+  MSF_LOCAL_LIDAR_VERY_GOOD = 0;
+  MSF_LOCAL_LIDAR_GOOD = 1;
+  MSF_LOCAL_LIDAR_NOT_BAD = 2;
+  MSF_LOCAL_LIDAR_BAD = 3;
+}
+
+// LiDAR-based localization result check (the difference between lidar and sins
+// result)
+enum LocalLidarConsistency {
+  MSF_LOCAL_LIDAR_CONSISTENCY_00 =
+      0;  // The difference is less than threshold 1
+  MSF_LOCAL_LIDAR_CONSISTENCY_01 =
+      1;  // The difference is bigger than threshold 1 but less than threshold 2
+  MSF_LOCAL_LIDAR_CONSISTENCY_02 =
+      2;  // The difference is bigger than threshold 2
+  MSF_LOCAL_LIDAR_CONSISTENCY_03 = 3;  // others
+}
+
+// GNSS-based localization result check (the difference between GNSS and sins
+// result)
+enum GnssConsistency {
+  MSF_GNSS_CONSISTENCY_00 = 0;  // The difference is less than threshold 1
+  MSF_GNSS_CONSISTENCY_01 =
+      1;  // The difference is bigger than threshold 1 but less than threshold 2
+  MSF_GNSS_CONSISTENCY_02 = 2;  // The difference is bigger than threshold 2
+  MSF_GNSS_CONSISTENCY_03 = 3;  // others
+}
+
+enum GnssPositionType {
+  NONE = 0;         // No solution
+  FIXEDPOS = 1;     // Position has been fixed by the FIX POSITION command or by
+                    // position averaging
+  FIXEDHEIGHT = 2;  // Position has been fixed by the FIX HEIGHT, or FIX AUTO,
+                    // command or by position averaging
+  FLOATCONV = 4;    // Solution from floating point carrier phase anbiguities
+  WIDELANE = 5;     // Solution from wide-lane ambiguities
+  NARROWLANE = 6;   // Solution from narrow-lane ambiguities
+  DOPPLER_VELOCITY = 8;  // Velocity computed using instantaneous Doppler
+  SINGLE = 16;           // Single point position
+  PSRDIFF = 17;          // Pseudorange differential solution
+  WAAS = 18;             // Solution calculated using corrections from an SBAS
+  PROPOGATED = 19;  // Propagated by a Kalman filter without new observations
+  OMNISTAR = 20;    // OmniSTAR VBS position
+  L1_FLOAT = 32;    // Floating L1 albiguity solution
+  IONOFREE_FLOAT = 33;  // Floating ionospheric free ambiguity solution
+  NARROW_FLOAT = 34;    // Floating narrow-lane anbiguity solution
+  L1_INT = 48;          // Integer L1 ambiguity solution
+  WIDE_INT = 49;        // Integer wide-lane ambiguity solution
+  NARROW_INT = 50;      // Integer narrow-lane ambiguity solution
+  RTK_DIRECT_INS = 51;  // RTK status where RTK filter is directly initialized
+                        // from the INS filter
+  INS_SBAS = 52;        // INS calculated position corrected for the antenna
+  INS_PSRSP =
+      53;  // INS pseudorange single point solution - no DGPS corrections
+  INS_PSRDIFF = 54;         // INS pseudorange differential solution
+  INS_RTKFLOAT = 55;        // INS RTK float point ambiguities solution
+  INS_RTKFIXED = 56;        // INS RTK fixed ambiguities solution
+  INS_OMNISTAR = 57;        // INS OmniSTAR VBS solution
+  INS_OMNISTAR_HP = 58;     // INS OmniSTAR high precision solution
+  INS_OMNISTAR_XP = 59;     // INS OmniSTAR extra precision solution
+  OMNISTAR_HP = 64;         // OmniSTAR high precision
+  OMNISTAR_XP = 65;         // OmniSTAR extra precision
+  PPP_CONVERGING = 68;      // Precise Point Position(PPP) solution converging
+  PPP = 69;                 // Precise Point Position(PPP)solution
+  INS_PPP_Converging = 73;  // INS NovAtel CORRECT Precise Point Position(PPP)
+                            // solution converging
+  INS_PPP = 74;   // INS NovAtel CORRECT Precise Point Position(PPP) solution
+  MSG_LOSS = 91;  // Gnss position message loss
+}
+
+// IMU msg status
+enum ImuMsgDelayStatus {
+  IMU_DELAY_NORMAL = 0;
+  IMU_DELAY_1 = 1;
+  IMU_DELAY_2 = 2;
+  IMU_DELAY_3 = 3;
+  IMU_DELAY_ABNORMAL = 4;
+}
+
+enum ImuMsgMissingStatus {
+  IMU_MISSING_NORMAL = 0;
+  IMU_MISSING_1 = 1;
+  IMU_MISSING_2 = 2;
+  IMU_MISSING_3 = 3;
+  IMU_MISSING_4 = 4;
+  IMU_MISSING_5 = 5;
+  IMU_MISSING_ABNORMAL = 6;
+}
+
+enum ImuMsgDataStatus {
+  IMU_DATA_NORMAL = 0;
+  IMU_DATA_ABNORMAL = 1;
+  IMU_DATA_OTHER = 2;
+}
+
+// The running status of localization module
+enum MsfRunningStatus {
+  MSF_SOL_LIDAR_GNSS = 0;
+  MSF_SOL_X_GNSS = 1;
+  MSF_SOL_LIDAR_X = 2;
+  MSF_SOL_LIDAR_XX = 3;
+  MSF_SOL_LIDAR_XXX = 4;
+  MSF_SOL_X_X = 5;
+  MSF_SOL_X_XX = 6;
+  MSF_SOL_X_XXX = 7;
+  MSF_SSOL_LIDAR_GNSS = 8;
+  MSF_SSOL_X_GNSS = 9;
+  MSF_SSOL_LIDAR_X = 10;
+  MSF_SSOL_LIDAR_XX = 11;
+  MSF_SSOL_LIDAR_XXX = 12;
+  MSF_SSOL_X_X = 13;
+  MSF_SSOL_X_XX = 14;
+  MSF_SSOL_X_XXX = 15;
+  MSF_NOSOL_LIDAR_GNSS = 16;
+  MSF_NOSOL_X_GNSS = 17;
+  MSF_NOSOL_LIDAR_X = 18;
+  MSF_NOSOL_LIDAR_XX = 19;
+  MSF_NOSOL_LIDAR_XXX = 20;
+  MSF_NOSOL_X_X = 21;
+  MSF_NOSOL_X_XX = 22;
+  MSF_NOSOL_X_XXX = 23;
+  MSF_RUNNING_INIT = 24;
+}
+
+// The status of sensor msg
+message MsfSensorMsgStatus {
+  optional ImuMsgDelayStatus imu_delay_status = 1;
+  optional ImuMsgMissingStatus imu_missing_status = 2;
+  optional ImuMsgDataStatus imu_data_status = 3;
+}
+
+// The status of msf localization module
+message MsfStatus {
+  optional LocalLidarConsistency local_lidar_consistency = 1;
+  optional GnssConsistency gnss_consistency = 2;
+  optional LocalLidarStatus local_lidar_status = 3;
+  optional LocalLidarQuality local_lidar_quality = 4;
+  optional GnssPositionType gnsspos_position_type = 5;
+  optional MsfRunningStatus msf_running_status = 6;
+}
+
+message LocalizationEstimate {
+  optional apollo.common.Header header = 1;
+  optional Pose pose = 2;
+  optional Uncertainty uncertainty = 3;
+
+  // The time of pose measurement, seconds since 1970-1-1 (UNIX time).
+  optional double measurement_time = 4;  // In seconds.
+
+  // Future trajectory actually driven by the drivers
+  repeated TrajectoryPoint trajectory_point = 5;
+
+  // msf status
+  optional MsfStatus msf_status = 6;
+  // msf quality
+  optional MsfSensorMsgStatus sensor_status = 7;
+}
+
+// The map message in transmission format.
+message MapMsg {
+  optional apollo.common.Header header = 1;
+
+  // Coordination: FLU
+  // x: Forward
+  // y: Left
+  // z: Up
+  optional apollo.hdmap.Map hdmap = 2;
+
+  // key: type string; the lane id in Map
+  // value: Navigation path; the reference line of the lane
+  map<string, NavigationPath> navigation_path = 3;
+
+  // lane marker info from perception
+  optional LaneMarkers lane_marker = 4;
+
+  // localization
+  optional LocalizationEstimate localization = 5;
+}
