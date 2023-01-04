@@ -191,7 +191,7 @@ Status LanesXmlParser::ParseLane(const tinyxml2::XMLElement& xml_node,
   Status success = ToPbLaneType(lane_type, &pb_lane_type);
   if (!success.ok()) {
     std::string err_msg = "Error convert lane type to pb lane type.";
-    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
+    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg + success.error_message());
   }
   lane->set_type(pb_lane_type);
 
