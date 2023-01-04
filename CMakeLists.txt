@@ -5,11 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(PkgConfig REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(nlohmann_json REQUIRED)
 
 pkg_check_modules(GLOG REQUIRED libglog)
 pkg_check_modules(GFLAGS REQUIRED gflags)
 pkg_check_modules(EIGEN3 REQUIRED eigen3)
+pkg_check_modules(PYTHON3 REQUIRED python3)
+pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+pkg_check_modules(PROJ REQUIRED proj)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
     proto/map_crosswalk.proto
@@ -60,23 +62,34 @@ add_library(apollo_hdmap SHARED
     src/config_gflags.cc
     src/file.cc
     src/hdmap_impl.cc
+    src/python/py_map.cc
     ${PROTO_SRCS}
 )
 
 target_include_directories(apollo_hdmap PRIVATE .
     ${Protobuf_INCLUDE_DIRS}
-    ${nlohmann_json_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${GLOG_INCLUDE_DIRS}
     ${GFLAGS_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
+    ${TINYXML2_INCLUDE_DIRS}
+    ${PROJ_INCLUDE_DIRS}
+    ${PYTHON3_INCLUDE_DIRS}
     ./src
 )
 
 set_target_properties(
     apollo_hdmap
     PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "_apollo_hdmap_wrapper"
     LINKER_LANGUAGE CXX
 )
 
-target_link_libraries(apollo_hdmap ${PROTOBUF_LIBRARY} ${GLOG_LIBRARIES} ${GFLAGS_LIBRARIES})
+target_link_libraries(apollo_hdmap
+    ${PROTOBUF_LIBRARY}
+    ${GLOG_LIBRARIES}
+    ${GFLAGS_LIBRARIES}
+    ${PYTHON3_LIBRARIES}
+    ${TINYXML2_LIBRARIES}
+    ${PROJ_LIBRARIES})
