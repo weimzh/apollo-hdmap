@@ -8,7 +8,60 @@ import subprocess
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from distutils.command.build_py import build_py
 from distutils.version import LooseVersion
+from distutils.spawn import find_executable
+
+
+# Find the Protocol Compiler.
+if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
+    protoc = os.environ['PROTOC']
+elif os.path.exists('../bazel-bin/protoc'):
+    protoc = '../bazel-bin/protoc'
+elif os.path.exists('../bazel-bin/protoc.exe'):
+    protoc = '../bazel-bin/protoc.exe'
+elif os.path.exists('protoc'):
+    protoc = '../protoc'
+elif os.path.exists('protoc.exe'):
+    protoc = '../protoc.exe'
+elif os.path.exists('../vsprojects/Debug/protoc.exe'):
+    protoc = '../vsprojects/Debug/protoc.exe'
+elif os.path.exists('../vsprojects/Release/protoc.exe'):
+    protoc = '../vsprojects/Release/protoc.exe'
+else:
+    protoc = find_executable('protoc')
+
+def GenProto(source, require=True):
+    """Generates a _pb2.py from the given .proto file.
+    Does nothing if the output already exists and is newer than the input.
+    Args:
+        source: the .proto file path.
+        require: if True, exit immediately when a path is not found.
+    """
+
+    if not require and not os.path.exists(source):
+        return
+
+    output = source.replace('.proto', '_pb2.py').replace('../src/', '')
+
+    if (not os.path.exists(output) or
+        (os.path.exists(source) and
+         os.path.getmtime(source) > os.path.getmtime(output))):
+        print('Generating %s...' % output)
+
+    if not os.path.exists(source):
+        sys.stderr.write("Can't find required file: %s\n" % source)
+        sys.exit(-1)
+
+    if protoc is None:
+        sys.stderr.write(
+            'protoc is not installed nor found in ../src.  Please compile it '
+            'or install the binary package.\n')
+        sys.exit(-1)
+
+    protoc_command = [protoc, '-I./proto', '-I.', '--python_out=./apollo_hdmap', source]
+    if subprocess.call(protoc_command) != 0:
+        sys.exit(-1)
 
 
 class CMakeExtension(Extension):
@@ -62,6 +115,37 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
+
+class BuildPyCmd(build_py):
+    """Custom build_py command for building the protobuf runtime."""
+
+    def run(self):
+        # Generate necessary .proto file if it doesn't exist.
+        GenProto('./proto/error_code.proto')
+        GenProto('./proto/geometry.proto')
+        GenProto('./proto/header.proto')
+        GenProto('./proto/map.proto')
+        GenProto('./proto/map_clear_area.proto')
+        GenProto('./proto/map_crosswalk.proto')
+        GenProto('./proto/map_geometry.proto')
+        GenProto('./proto/map_id.proto')
+        GenProto('./proto/map_junction.proto')
+        GenProto('./proto/map_lane.proto')
+        GenProto('./proto/map_overlap.proto')
+        GenProto('./proto/map_parking_space.proto')
+        GenProto('./proto/map_pnc_junction.proto')
+        GenProto('./proto/map_road.proto')
+        GenProto('./proto/map_rsu.proto')
+        GenProto('./proto/map_signal.proto')
+        GenProto('./proto/map_speed_bump.proto')
+        GenProto('./proto/map_speed_control.proto')
+        GenProto('./proto/map_stop_sign.proto')
+        GenProto('./proto/map_yield_sign.proto')
+        GenProto('./proto/navigation.proto')
+        GenProto('./proto/pnc_point.proto')
+        # build_py is an old-style class, so super() doesn't work.
+        build_py.run(self)
+
 setup(
     name = 'apollo-hdmap',
     version = '7',
@@ -71,7 +155,7 @@ setup(
     url = 'https://gitee.com/weimzh/apollo-hdmap/',
     packages = ['apollo_hdmap'],
     ext_modules = [CMakeExtension('apollo_hdmap_wrapper', '.')],
-    cmdclass = dict(build_ext=CMakeBuild),
+    cmdclass = dict(build_py=BuildPyCmd, build_ext=CMakeBuild),
     zip_safe = False,
 )
 
