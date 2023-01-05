@@ -43,6 +43,21 @@ class PyHdMap {
     return hdmap_->LoadMapFromFile(map_filename);
   }
 
+  int GetLocalMap(double point_x, double point_y, double point_z, double range_x,
+                  double range_y, Map* local_map) {
+    apollo::common::PointENU point;
+    point.set_x(point_x);
+    point.set_y(point_y);
+    point.set_z(point_z);
+
+    std::pair<double, double> range;
+    range.first = range_x;
+    range.second = range_y;
+
+    int ret = hdmap_->GetLocalMap(point, range, local_map);
+    return ret;
+  }
+
  private:
   std::unique_ptr<HDMap> hdmap_;
 };
