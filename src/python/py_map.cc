@@ -22,6 +22,7 @@
 #include <string>
 
 #include <Python.h>
+#include "map.pb.h"
 
 using apollo::hdmap::PyHdMap;
 
@@ -84,12 +85,49 @@ PyObject *apollo_PyHdMap_LoadMapFromFile(PyObject *self, PyObject *args) {
   return PyLong_FromUnsignedLongLong(ret);
 }
 
+PyObject *apollo_PyHdMap_GetLocalMap(PyObject *self, PyObject *args) {
+  PyObject *pyobj_hdmap = nullptr;
+  double point_x = 0;
+  double point_y = 0;
+  double range_x = 0;
+  double range_y = 0;
+  if (!PyArg_ParseTuple(args,
+      const_cast<char *>("Odddd:PyHdMap_LoadMapFromFile"),
+          &pyobj_hdmap, &point_x, &point_y, &range_x, &range_y)) {
+    AERROR << "PyHdMap_LoadMapFromFile failed!";
+    return PYOBJECT_NULL_STRING;
+  }
+
+  auto *hdmap = reinterpret_cast<PyHdMap *>(PyCapsule_GetPointer(
+      pyobj_hdmap, "apollo_hdmap_pyhdmap"));
+  if (nullptr == hdmap) {
+    AERROR << "PyHdMap_LoadMapFromFile ptr is null!";
+    return PYOBJECT_NULL_STRING;
+  }
+
+  apollo::hdmap::Map m;
+  int ret = hdmap->GetLocalMap(point_x, point_y, range_x, range_y, &m);
+  if (ret != 0) {
+    AERROR << "PyHdMap_GetLocalMap returned error! error code: " << ret;
+    return PYOBJECT_NULL_STRING;
+  }
+
+  std::string output;
+  if (!m.SerializeToString(&output)) {
+    AERROR << "PyHdMap_GetLocalMap SerializeToString error!";
+    return PYOBJECT_NULL_STRING;
+  }
+
+  return C_STR_TO_PY_BYTES(output);
+}
+
 
 static PyMethodDef _apollo_hdmap_methods[] = {
     // PyHdMap fun
     {"new_PyHdMap", apollo_new_PyHdMap, METH_VARARGS, ""},
     {"delete_PyHdMap", apollo_delete_PyHdMap, METH_VARARGS, ""},
     {"PyHdMap_LoadMapFromFile", apollo_PyHdMap_LoadMapFromFile, METH_VARARGS, ""},
+    {"PyHdMap_GetLocalMap", apollo_PyHdMap_GetLocalMap, METH_VARARGS, ""},
     {nullptr, nullptr, 0, nullptr} /* sentinel */
 };
 

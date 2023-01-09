@@ -25,8 +25,11 @@ import sys
 
 wrapper_lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(wrapper_lib_path)
+sys.path.append(os.path.dirname(__file__))
 
 _HDMAP = importlib.import_module('_apollo_hdmap_wrapper')
+
+import map_pb2
 
 class HDMap(object):
     """
@@ -45,3 +48,11 @@ class HDMap(object):
 
     def LoadMapFromFile(self, map_path):
         return _HDMAP.PyHdMap_LoadMapFromFile(self.hdmap, map_path)
+
+    def GetLocalMap(self, point_x, point_y, range_x, range_y):
+        s = _HDMAP.PyHdMap_GetLocalMap(self.hdmap, point_x, point_y, range_x, range_y)
+        if s is None or len(s) == 0:
+            return None
+        mp = map_pb2.Map()
+        mp.ParseFromString(s)
+        return mp
