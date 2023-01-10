@@ -30,6 +30,7 @@ sys.path.append(os.path.dirname(__file__))
 _HDMAP = importlib.import_module('_apollo_hdmap_wrapper')
 
 import map_pb2
+import map_lane_pb2
 
 class HDMap(object):
     """
@@ -56,3 +57,12 @@ class HDMap(object):
         mp = map_pb2.Map()
         mp.ParseFromString(s)
         return mp
+
+    def GetNearestLane(self, point_x, point_y):
+        s = _HDMAP.PyHdMap_GetNearestLane(self.hdmap, point_x, point_y)
+        if s is None:
+            return None
+        mp = map_lane_pb2.Lane()
+        mp.ParseFromString(s['lane'])
+        s['lane'] = mp
+        return s

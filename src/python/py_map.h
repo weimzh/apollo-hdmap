@@ -57,6 +57,17 @@ class PyHdMap {
     return ret;
   }
 
+  int GetNearestLane(double point_x, double point_y,
+                     apollo::hdmap::LaneInfoConstPtr* nearest_lane,
+                     double* nearest_s, double* nearest_l) {
+    apollo::common::PointENU point;
+    point.set_x(point_x);
+    point.set_y(point_y);
+
+    int ret = hdmap_->GetNearestLane(point, nearest_lane, nearest_s, nearest_l);
+    return ret;
+  }
+
  private:
   std::unique_ptr<HDMap> hdmap_;
 };
