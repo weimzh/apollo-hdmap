@@ -5,13 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(PkgConfig REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(PROJ4 REQUIRED)
 
 pkg_check_modules(GLOG REQUIRED libglog)
 pkg_check_modules(GFLAGS REQUIRED gflags)
 pkg_check_modules(EIGEN3 REQUIRED eigen3)
 pkg_check_modules(PYTHON3 REQUIRED python3)
 pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
-pkg_check_modules(PROJ REQUIRED proj)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
     proto/map_crosswalk.proto
@@ -73,7 +73,7 @@ target_include_directories(apollo_hdmap PRIVATE .
     ${GFLAGS_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ${TINYXML2_INCLUDE_DIRS}
-    ${PROJ_INCLUDE_DIRS}
+    ${PROJ4_INCLUDE_DIR}
     ${PYTHON3_INCLUDE_DIRS}
     ./src
 )
@@ -92,4 +92,4 @@ target_link_libraries(apollo_hdmap
     ${GFLAGS_LIBRARIES}
     ${PYTHON3_LIBRARIES}
     ${TINYXML2_LIBRARIES}
-    ${PROJ_LIBRARIES})
+    ${PROJ4_LIBRARIES})
