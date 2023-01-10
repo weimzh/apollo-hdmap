@@ -42,7 +42,7 @@ def GenProto(source, require=True):
     if not require and not os.path.exists(source):
         return
 
-    output = source.replace('.proto', '_pb2.py').replace('../src/', '')
+    output = source.replace('.proto', '_pb2.py').replace('./proto/', './apollo_hdmap/')
 
     if (not os.path.exists(output) or
         (os.path.exists(source) and
@@ -62,6 +62,10 @@ def GenProto(source, require=True):
     protoc_command = [protoc, '-I./proto', '-I.', '--python_out=./apollo_hdmap', source]
     if subprocess.call(protoc_command) != 0:
         sys.exit(-1)
+    sed_command = ['sed', '-i', '1s/^/import sys\\nimport os\\nsys.path.append(os.path.split(os.path.abspath(__file__))[0])\\n/', output]
+    if subprocess.call(sed_command) != 0:
+        sys.exit(-1)
+
 
 
 class CMakeExtension(Extension):
