@@ -31,6 +31,8 @@
 
 #include "google/protobuf/util/json_util.h"
 #include "nlohmann/json.hpp"
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
 
 namespace apollo {
 namespace cyber {
@@ -95,6 +97,20 @@ bool SetProtoToBinaryFile(const google::protobuf::Message &message,
   return message.SerializeToOstream(&output);
 }
 
+// bool GetProtoFromBinaryFile(const std::string &file_name,
+//                             google::protobuf::Message *message) {
+//   std::fstream input(file_name, std::ios::in | std::ios::binary);
+//   if (!input.good()) {
+//     AERROR << "Failed to open file " << file_name << " in binary mode.";
+//     return false;
+//   }
+//   if (!message->ParseFromIstream(&input)) {
+//     AERROR << "Failed to parse file " << file_name << " as binary proto.";
+//     return false;
+//   }
+//   return true;
+// }
+
 bool GetProtoFromBinaryFile(const std::string &file_name,
                             google::protobuf::Message *message) {
   std::fstream input(file_name, std::ios::in | std::ios::binary);
@@ -102,10 +118,19 @@ bool GetProtoFromBinaryFile(const std::string &file_name,
     AERROR << "Failed to open file " << file_name << " in binary mode.";
     return false;
   }
-  if (!message->ParseFromIstream(&input)) {
+  // Create a CodedInputStream that reads from the ifstream.
+  google::protobuf::io::IstreamInputStream istream_input(&input);
+  google::protobuf::io::CodedInputStream coded_input_stream(&istream_input);
+
+  // Set the total byte limit if needed.
+  coded_input_stream.SetTotalBytesLimit(671088640,671088640);
+
+  // Parse the binary proto message from the CodedInputStream.
+  if (!message->ParseFromCodedStream(&coded_input_stream)) {
     AERROR << "Failed to parse file " << file_name << " as binary proto.";
     return false;
   }
+
   return true;
 }
 
