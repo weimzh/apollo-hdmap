@@ -35,7 +35,7 @@ namespace hdmap {
 class PyHdMap {
  public:
   explicit PyHdMap() {
-    HDMap *hdmap = new HDMap();
+    HDMap* hdmap = new HDMap();
     hdmap_.reset(hdmap);
   }
 
@@ -65,6 +65,18 @@ class PyHdMap {
     point.set_y(point_y);
 
     int ret = hdmap_->GetNearestLane(point, nearest_lane, nearest_s, nearest_l);
+    return ret;
+  }
+
+  int GetLanesWithHeading(double point_x, double point_y, double distance,
+                          double central_heading, double max_heading_difference,
+                          std::vector<apollo::hdmap::LaneInfoConstPtr>* lanes) {
+    apollo::common::PointENU point;
+    point.set_x(point_x);
+    point.set_y(point_y);
+
+    int ret = hdmap_->GetLanesWithHeading(point, distance, central_heading,
+                                          max_heading_difference, lanes);
     return ret;
   }
 

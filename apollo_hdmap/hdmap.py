@@ -66,3 +66,14 @@ class HDMap(object):
         mp.ParseFromString(s['lane'])
         s['lane'] = mp
         return s
+
+    def GetLanesWithHeading(self, point_x, point_y, distance, central_heading, max_heading_difference):
+        s = _HDMAP.PyHdMap_GetLanesWithHeading(self.hdmap, point_x, point_y, distance, central_heading, max_heading_difference)
+        if s is None or len(s) == 0:
+            return None
+        ret = []
+        for lane in s:
+            mp = map_lane_pb2.Lane()
+            mp.ParseFromString(lane)
+            ret.append(mp)
+        return ret
