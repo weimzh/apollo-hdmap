@@ -80,6 +80,31 @@ class PyHdMap {
     return ret;
   }
 
+  int GetJunctions(double point_x, double point_y, double distance,
+                   std::vector<apollo::hdmap::JunctionInfoConstPtr>* junctions) {
+    apollo::common::PointENU point;
+    point.set_x(point_x);
+    point.set_y(point_y);
+
+    int ret = hdmap_->GetJunctions(point, distance, junctions);
+    return ret;
+  }
+
+  int GetNearestLaneWithHeading(double point_x, double point_y, double distance,
+                                double central_heading,
+                                double max_heading_difference,
+                                apollo::hdmap::LaneInfoConstPtr* nearest_lane,
+                                double* nearest_s, double* nearest_l) {
+    apollo::common::PointENU point;
+    point.set_x(point_x);
+    point.set_y(point_y);
+
+    int ret = hdmap_->GetNearestLaneWithHeading(
+        point, distance, central_heading, max_heading_difference, nearest_lane,
+        nearest_s, nearest_l);
+    return ret;
+  }
+
  private:
   std::unique_ptr<HDMap> hdmap_;
 };
