@@ -92,8 +92,8 @@ PyObject *apollo_PyHdMap_GetLocalMap(PyObject *self, PyObject *args) {
   double range_x = 0;
   double range_y = 0;
   if (!PyArg_ParseTuple(args,
-      const_cast<char *>("Odddd:PyHdMap_LoadMapFromFile"),
-          &pyobj_hdmap, &point_x, &point_y, &range_x, &range_y)) {
+                        const_cast<char *>("Odddd:PyHdMap_LoadMapFromFile"),
+                        &pyobj_hdmap, &point_x, &point_y, &range_x, &range_y)) {
     AERROR << "PyHdMap_GetLocalMap failed!";
     return PYOBJECT_NULL_STRING;
   }
@@ -127,10 +127,10 @@ PyObject *apollo_PyHdMap_GetNearestLane(PyObject *self, PyObject *args) {
   double point_y = 0;
   if (!PyArg_ParseTuple(args,
       const_cast<char *>("Odd:PyHdMap_LoadMapFromFile"),
-          &pyobj_hdmap, &point_x, &point_y)) {
+                        &pyobj_hdmap, &point_x, &point_y)) {
     AERROR << "PyHdMap_GetNearestLane failed!";
     Py_INCREF(Py_None);
-    return Py_None; 
+    return Py_None;
   }
 
   auto *hdmap = reinterpret_cast<PyHdMap *>(PyCapsule_GetPointer(
@@ -138,7 +138,7 @@ PyObject *apollo_PyHdMap_GetNearestLane(PyObject *self, PyObject *args) {
   if (nullptr == hdmap) {
     AERROR << "PyHdMap_GetNearestLane ptr is null!";
     Py_INCREF(Py_None);
-    return Py_None; 
+    return Py_None;
   }
 
   apollo::hdmap::LaneInfoConstPtr nearest_lane;
@@ -164,14 +164,157 @@ PyObject *apollo_PyHdMap_GetNearestLane(PyObject *self, PyObject *args) {
   return d;
 }
 
+PyObject *apollo_PyHdMap_GetLanesWithHeading(PyObject *self, PyObject *args) {
+  PyObject *pyobj_hdmap = nullptr;
+  double point_x = 0;
+  double point_y = 0;
+  double distance = 0;
+  double central_heading = 0;
+  double max_heading_difference = 0;
+  if (!PyArg_ParseTuple(args, "Oddddd",
+                        &pyobj_hdmap, &point_x, &point_y, &distance,
+                        &central_heading, &max_heading_difference)) {
+    AERROR << "PyHdMap_GetLanesWithHeading failed!";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  auto *hdmap = reinterpret_cast<PyHdMap *>(
+      PyCapsule_GetPointer(pyobj_hdmap, "apollo_hdmap_pyhdmap"));
+  if (nullptr == hdmap) {
+    AERROR << "PyHdMap_GetLanesWithHeading ptr is null!";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  std::vector<apollo::hdmap::LaneInfoConstPtr> lanes;
+  int ret =
+      hdmap->GetLanesWithHeading(point_x, point_y, distance, central_heading,
+                                 max_heading_difference, &lanes);
+  if (ret != 0) {
+    AERROR << "PyHdMap_GetLanesWithHeading returned error! error code: " << ret;
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  // 将 C++ 结果转换为 Python 列表
+  PyObject *result_list = PyList_New(lanes.size());
+  for (size_t i = 0; i < lanes.size(); ++i) {
+    std::string lane_output;
+    if (!lanes[i]->lane().SerializeToString(&lane_output)) {
+      AERROR << "PyHdMap_GetLanesWithHeading SerializeToString error!";
+      return PYOBJECT_NULL_STRING;
+    }
+    PyList_SetItem(result_list, i, C_STR_TO_PY_BYTES(lane_output));
+  }
+
+  return result_list;
+}
+
+PyObject *apollo_PyHdMap_GetNearestLaneWithHeading(PyObject *self,
+                                                   PyObject *args) {
+  PyObject *pyobj_hdmap = nullptr;
+  double point_x = 0;
+  double point_y = 0;
+  double distance = 0;
+  double central_heading = 0;
+  double max_heading_difference = 0;
+  if (!PyArg_ParseTuple(args, "Oddddd", &pyobj_hdmap, &point_x, &point_y,
+                        &distance, &central_heading, &max_heading_difference)) {
+    AERROR << "PyHdMap_GetNearestLaneWithHeading failed!";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  auto *hdmap = reinterpret_cast<PyHdMap *>(
+      PyCapsule_GetPointer(pyobj_hdmap, "apollo_hdmap_pyhdmap"));
+  if (nullptr == hdmap) {
+    AERROR << "PyHdMap_GetNearestLaneWithHeading ptr is null!";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  apollo::hdmap::LaneInfoConstPtr nearest_lane;
+  double nearest_s = 0;
+  double nearest_l = 0;
+  int ret = hdmap->GetNearestLaneWithHeading(
+      point_x, point_y, distance, central_heading, max_heading_difference,
+      &nearest_lane, &nearest_s, &nearest_l);
+  if (ret != 0) {
+    AERROR << "PyHdMap_GetNearestLaneWithHeading returned error! error code: "
+           << ret;
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  PyObject *d = PyDict_New();
+
+  std::string lane_output;
+  if (!nearest_lane->lane().SerializeToString(&lane_output)) {
+    AERROR << "PyHdMap_GetNearestLaneWithHeading SerializeToString error!";
+    return PYOBJECT_NULL_STRING;
+  }
+
+  PyDict_SetItemString(d, "lane", C_STR_TO_PY_BYTES(lane_output));
+
+  return d;
+}
+
+PyObject *apollo_PyHdMap_GetJunctions(PyObject *self, PyObject *args) {
+  PyObject *pyobj_hdmap = nullptr;
+  double point_x = 0;
+  double point_y = 0;
+  double distance = 0;
+  if (!PyArg_ParseTuple(args, "Oddd", &pyobj_hdmap, &point_x, &point_y,
+                        &distance)) {
+    AERROR << "PyHdMap_GetJunctions failed!";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  auto *hdmap = reinterpret_cast<PyHdMap *>(
+      PyCapsule_GetPointer(pyobj_hdmap, "apollo_hdmap_pyhdmap"));
+  if (nullptr == hdmap) {
+    AERROR << "PyHdMap_GetJunctions ptr is null!";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  std::vector<apollo::hdmap::JunctionInfoConstPtr> juntions;
+  int ret = hdmap->GetJunctions(point_x, point_y, distance, &juntions);
+  if (ret != 0) {
+    AERROR << "PyHdMap_GetJunctions returned error! error code: " << ret;
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  // 将 C++ 结果转换为 Python 列表
+  PyObject *result_list = PyList_New(juntions.size());
+  for (size_t i = 0; i < juntions.size(); ++i) {
+    std::string juntion_output;
+    if (!juntions[i]->junction().SerializeToString(&juntion_output)) {
+      AERROR << "PyHdMap_GetJunctions SerializeToString error!";
+      return PYOBJECT_NULL_STRING;
+    }
+    PyList_SetItem(result_list, i, C_STR_TO_PY_BYTES(juntion_output));
+  }
+
+  return result_list;
+}
 
 static PyMethodDef _apollo_hdmap_methods[] = {
     // PyHdMap fun
     {"new_PyHdMap", apollo_new_PyHdMap, METH_VARARGS, ""},
     {"delete_PyHdMap", apollo_delete_PyHdMap, METH_VARARGS, ""},
-    {"PyHdMap_LoadMapFromFile", apollo_PyHdMap_LoadMapFromFile, METH_VARARGS, ""},
+    {"PyHdMap_LoadMapFromFile", apollo_PyHdMap_LoadMapFromFile, METH_VARARGS,
+     ""},
     {"PyHdMap_GetLocalMap", apollo_PyHdMap_GetLocalMap, METH_VARARGS, ""},
     {"PyHdMap_GetNearestLane", apollo_PyHdMap_GetNearestLane, METH_VARARGS, ""},
+    {"PyHdMap_GetJunctions", apollo_PyHdMap_GetJunctions, METH_VARARGS, ""},
+    {"PyHdMap_GetNearestLaneWithHeading",
+     apollo_PyHdMap_GetNearestLaneWithHeading, METH_VARARGS, ""},
+    {"PyHdMap_GetLanesWithHeading", apollo_PyHdMap_GetLanesWithHeading,
+     METH_VARARGS, ""},
     {nullptr, nullptr, 0, nullptr} /* sentinel */
 };
 

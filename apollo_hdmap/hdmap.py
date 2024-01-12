@@ -31,6 +31,7 @@ _HDMAP = importlib.import_module('_apollo_hdmap_wrapper')
 
 import map_pb2
 import map_lane_pb2
+import map_junction_pb2
 
 class HDMap(object):
     """
@@ -66,3 +67,34 @@ class HDMap(object):
         mp.ParseFromString(s['lane'])
         s['lane'] = mp
         return s
+
+    def GetLanesWithHeading(self, point_x, point_y, distance, central_heading, max_heading_difference):
+        s = _HDMAP.PyHdMap_GetLanesWithHeading(self.hdmap, point_x, point_y, distance, central_heading, max_heading_difference)
+        if s is None or len(s) == 0:
+            return None
+        ret = []
+        for lane in s:
+            mp = map_lane_pb2.Lane()
+            mp.ParseFromString(lane)
+            ret.append(mp)
+        return ret
+    
+    def GetNearestLaneWithHeading(self, point_x, point_y, distance, central_heading, max_heading_difference):
+        s = _HDMAP.PyHdMap_GetNearestLaneWithHeading(self.hdmap, point_x, point_y, distance, central_heading, max_heading_difference)
+        if s is None:
+            return None
+        mp = map_lane_pb2.Lane()
+        mp.ParseFromString(s['lane'])
+        s['lane'] = mp
+        return s
+    
+    def GetJunctions(self, point_x, point_y, distance):
+        s = _HDMAP.PyHdMap_GetJunctions(self.hdmap, point_x, point_y, distance)
+        if s is None or len(s) == 0:
+            return None
+        ret = []
+        for junction in s:
+            mp = map_junction_pb2.Junction()
+            mp.ParseFromString(junction)
+            ret.append(mp)
+        return ret
